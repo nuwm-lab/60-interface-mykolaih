@@ -3,6 +3,48 @@ using System.Globalization;
 
 namespace Task08.RectangleParallelepiped
 {
+    public interface IPrintable
+    {
+        void PrintCoefficients();
+    }
+
+    public interface IContainable
+    {
+        bool Contains(params double[] coords);
+    }
+
+    // Unified interface for shapes
+    public interface IShape : IPrintable, IContainable
+    {
+        // marker interface - can be extended with common shape members
+    }
+
+    public abstract class Shape : IShape
+    {
+        // common validation helper for all shapes
+        protected static void ValidateNumber(double v, string name)
+        {
+            if (double.IsNaN(v) || double.IsInfinity(v))
+                throw new ArgumentException($"{name} must be a finite number.", name);
+        }
+
+        // protected constructor to demonstrate construction order
+        protected Shape()
+        {
+            Console.WriteLine("Shape constructed.");
+        }
+
+        // destructor / finalizer to demonstrate cleanup (non-deterministic)
+        ~Shape()
+        {
+            Console.WriteLine("Shape finalized.");
+        }
+
+        public abstract void SetCoefficients(double b1, double a1, double b2, double a2);
+        public abstract void PrintCoefficients();
+        public abstract bool Contains(params double[] coords);
+    }
+
     public readonly struct Point2D
     {
         public double X { get; }
@@ -21,32 +63,31 @@ namespace Task08.RectangleParallelepiped
     }
 
     // Rectangle: b1 <= x1 <= a1, b2 <= x2 <= a2
-    public class Rectangle
+    public class Rectangle : Shape
     {
         private double _b1, _a1, _b2, _a2;
 
-        // Change from protected to public
         public double B1 => _b1;
         public double A1 => _a1;
         public double B2 => _b2;
         public double A2 => _a2;
 
-        public Rectangle() { }
-
-        public Rectangle(double b1, double a1, double b2, double a2)
+        // default constructor
+        public Rectangle()
+            : base()
         {
+            Console.WriteLine("Rectangle constructed.");
+        }
+
+        // parameterized constructor
+        public Rectangle(double b1, double a1, double b2, double a2)
+            : base()
+        {
+            Console.WriteLine("Rectangle constructed (params).");
             SetCoefficients(b1, a1, b2, a2);
         }
 
-        // validate numeric values
-        protected static void ValidateNumber(double v, string name)
-        {
-            if (double.IsNaN(v) || double.IsInfinity(v))
-                throw new ArgumentException($"{name} must be a finite number.", name);
-        }
-
-        // set coefficients (ensures b <= a by swapping if necessary)
-        public virtual void SetCoefficients(double b1, double a1, double b2, double a2)
+        public override void SetCoefficients(double b1, double a1, double b2, double a2)
         {
             ValidateNumber(b1, nameof(b1));
             ValidateNumber(a1, nameof(a1));
@@ -60,16 +101,14 @@ namespace Task08.RectangleParallelepiped
             else { _b2 = a2; _a2 = b2; }
         }
 
-        public virtual void PrintCoefficients()
+        public override void PrintCoefficients()
         {
             Console.WriteLine("Rectangle bounds:");
             Console.WriteLine($"  b1 <= x1 <= a1 : {B1} <= x1 <= {A1}");
             Console.WriteLine($"  b2 <= x2 <= a2 : {B2} <= x2 <= {A2}");
         }
 
-        // virtual polymorphic containment check using coords array
-        // Rectangle expects at least two coordinates [x1, x2]
-        public virtual bool Contains(params double[] coords)
+        public override bool Contains(params double[] coords)
         {
             if (coords == null || coords.Length < 2) return false;
             var x1 = coords[0];
@@ -77,30 +116,39 @@ namespace Task08.RectangleParallelepiped
             return x1 >= B1 && x1 <= A1 && x2 >= B2 && x2 <= A2;
         }
 
-        // convenience overloads
         public virtual bool Contains(Point2D p) => Contains(p.X, p.Y);
+
+        // destructor / finalizer
+        ~Rectangle()
+        {
+            Console.WriteLine("Rectangle finalized.");
+        }
     }
 
     // Parallelepiped: extends Rectangle with b3 <= x3 <= a3.
     public class Parallelepiped : Rectangle
     {
         private double _b3, _a3;
-        // expose third-dimension bounds publicly so external code/tests can read them
+
         public double B3 => _b3;
         public double A3 => _a3;
 
-        public Parallelepiped() : base() { }
+        public Parallelepiped()
+            : base()
+        {
+            Console.WriteLine("Parallelepiped constructed.");
+        }
 
         public Parallelepiped(double b1, double a1, double b2, double a2, double b3, double a3)
             : base(b1, a1, b2, a2)
         {
+            Console.WriteLine("Parallelepiped constructed (params).");
             SetCoefficients(b1, a1, b2, a2, b3, a3);
         }
 
-        // overloaded: set 3D coefficients
+        // overload: set 3D coefficients
         public void SetCoefficients(double b1, double a1, double b2, double a2, double b3, double a3)
         {
-            // reuse base validation and normalization for first two dimensions
             base.SetCoefficients(b1, a1, b2, a2);
 
             ValidateNumber(b3, nameof(b3));
@@ -118,65 +166,83 @@ namespace Task08.RectangleParallelepiped
             Console.WriteLine($"  b3 <= x3 <= a3 : {B3} <= x3 <= {A3}");
         }
 
-        // override polymorphic containment: if only 2 coordinates provided, check base projection
         public override bool Contains(params double[] coords)
         {
             if (coords == null) return false;
             if (coords.Length < 2) return false;
             if (coords.Length == 2) return base.Contains(coords); // projection check
-            // expect at least 3 coords for full 3D check
             var x1 = coords[0];
             var x2 = coords[1];
             var x3 = coords[2];
             return base.Contains(x1, x2) && x3 >= B3 && x3 <= A3;
         }
 
-        // convenience overloads
         public bool Contains(Point3D p) => Contains(p.X, p.Y, p.Z);
         public override bool Contains(Point2D p) => Contains(p.X, p.Y);
+
+        ~Parallelepiped()
+        {
+            Console.WriteLine("Parallelepiped finalized.");
+        }
     }
 
+    // Console-based entry point demonstrating interfaces and abstract class
     public static class Program
     {
-        public static void Main(string[] args)
+        public static void Main()
         {
-            Console.WriteLine("Rectangle and Parallelepiped demo with virtual methods\n");
+            Console.WriteLine("Rectangle and Parallelepiped demo with abstract base class, interfaces and finalizers\n");
 
             Console.WriteLine("Choose mode: enter '1' to work with a Rectangle, anything else for Parallelepiped:");
             var choiceLine = Console.ReadLine()?.Trim() ?? "";
             bool chooseRectangle = choiceLine == "1";
 
-            // Declare base-class reference (acts as "pointer" to an instance of unknown compile-time type)
-            Rectangle baseRef;
+            Shape baseRef;
 
             if (chooseRectangle)
             {
                 Console.WriteLine("Enter rectangle bounds (b1 a1 b2 a2) separated by spaces:");
                 var rectVals = ReadDoubles(4);
-                // dynamic creation: object created depending on runtime choice
                 baseRef = new Rectangle(rectVals[0], rectVals[1], rectVals[2], rectVals[3]);
             }
             else
             {
                 Console.WriteLine("Enter parallelepiped bounds (b1 a1 b2 a2 b3 a3) separated by spaces:");
                 var parVals = ReadDoubles(6);
-                // dynamic creation of derived type, but stored in base-class reference
                 baseRef = new Parallelepiped(parVals[0], parVals[1], parVals[2], parVals[3], parVals[4], parVals[5]);
             }
 
-            // Call virtual method through base-class reference (demonstrates polymorphism)
             Console.WriteLine();
             Console.WriteLine("Calling PrintCoefficients() via base-class reference:");
             baseRef.PrintCoefficients();
 
             Console.WriteLine();
 
-            // Call Contains via base-class reference with appropriate number of coords
-            if (baseRef is Parallelepiped) // runtime type check
+            // Demonstrate interface usage
+            IPrintable printable = baseRef;
+            IContainable containable = baseRef;
+            IShape shapeIface = baseRef; // unified interface
+
+            Console.WriteLine($"baseRef runtime type: {baseRef.GetType().FullName}");
+            Console.WriteLine($"Implements IPrintable: {baseRef is IPrintable}");
+            Console.WriteLine($"Implements IContainable: {baseRef is IContainable}");
+            Console.WriteLine($"Implements IShape: {baseRef is IShape}");
+            Console.WriteLine($"IPrintable variable runtime type: {printable.GetType().FullName}");
+            Console.WriteLine($"IContainable variable runtime type: {containable.GetType().FullName}");
+            Console.WriteLine($"IShape variable runtime type: {shapeIface.GetType().FullName}");
+
+            Console.WriteLine("Calling PrintCoefficients() via IPrintable:");
+            printable.PrintCoefficients();
+
+            Console.WriteLine();
+
+            // call Contains via unified interface
+            Console.WriteLine("Checking containment via IShape:");
+            if (shapeIface is Parallelepiped)
             {
                 Console.WriteLine("Enter a 3D point (x1 x2 x3) to check for the parallelepiped:");
                 var p3 = ReadDoubles(3);
-                Console.WriteLine(baseRef.Contains(p3[0], p3[1], p3[2])
+                Console.WriteLine(shapeIface.Contains(p3[0], p3[1], p3[2])
                     ? "Point belongs to the parallelepiped."
                     : "Point does NOT belong to the parallelepiped");
             }
@@ -184,19 +250,17 @@ namespace Task08.RectangleParallelepiped
             {
                 Console.WriteLine("Enter a 2D point (x1 x2) to check for the rectangle:");
                 var p2 = ReadDoubles(2);
-                Console.WriteLine(baseRef.Contains(p2[0], p2[1])
+                Console.WriteLine(shapeIface.Contains(p2[0], p2[1])
                     ? "Point belongs to the rectangle."
                     : "Point does NOT belong to the rectangle");
             }
 
-            // Additional demonstration: treat baseRef as a "pointer" again and call Contains(Point2D)
             Console.WriteLine();
             Console.WriteLine("Demonstrating call to Contains(Point2D) through the same base-class reference:");
             var sample = new Point2D((baseRef is Parallelepiped) ? ((Parallelepiped)baseRef).B1 : 0, 0);
-            Console.WriteLine($"Sample point ({sample.X}, {sample.Y}) belongs: {baseRef.Contains(sample)}");
+            Console.WriteLine($"Sample point ({sample.X}, {sample.Y}) belongs: {baseRef.Contains(sample.X, sample.Y)}");
         }
 
-        // helper to read exactly n doubles from one line or multiple lines; uses InvariantCulture
         private static double[] ReadDoubles(int count)
         {
             var list = new double[count];
